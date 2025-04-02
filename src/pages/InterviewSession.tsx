@@ -9,6 +9,54 @@ import { Textarea } from "@/components/ui/textarea";
 import { Mic, MicOff, Camera, X, Check } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
+// Speech recognition interface
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: (event: SpeechRecognitionErrorEvent) => void;
+  onend: () => void;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
+
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item: (index: number) => SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  length: number;
+  item: (index: number) => SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: new () => SpeechRecognition;
+    webkitSpeechRecognition: new () => SpeechRecognition;
+  }
+}
+
 const InterviewSession = () => {
   const {
     userName,
@@ -34,7 +82,7 @@ const InterviewSession = () => {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const speechRecognitionRef = useRef<any>(null);
+  const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -92,9 +140,71 @@ const InterviewSession = () => {
   };
   
   const initSpeechRecognition = () => {
-    // Speech recognition simulation
-    // In a real app, we would use the Web Speech API or a similar library
-    console.log("Speech recognition initialized");
+    // Use the Web Speech API for real speech recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      console.error("Speech recognition not supported in this browser");
+      toast({
+        variant: "destructive",
+        title: "Browser not supported",
+        description: "Speech recognition is not supported in your browser. Please try Chrome, Edge, or Safari.",
+      });
+      return;
+    }
+    
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+      
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+      
+      // Update live transcription
+      setLiveTranscription(finalTranscript + interimTranscript);
+      
+      // Update behavior analysis
+      if (interviewMode === "video") {
+        // For a real app, we would analyze the video feed here
+        // For now, just simulate random scores
+        updateBehaviorAnalysis("eyeContact", Math.random() * 100);
+        updateBehaviorAnalysis("confidence", Math.random() * 100);
+        updateBehaviorAnalysis("engagement", Math.random() * 100);
+        updateBehaviorAnalysis("attentiveness", Math.random() * 100);
+      }
+      
+      updateBehaviorAnalysis("clarity", Math.random() * 100);
+    };
+    
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error", event.error);
+      toast({
+        variant: "destructive",
+        title: "Speech recognition error",
+        description: event.message || "An error occurred during speech recognition",
+      });
+    };
+    
+    recognition.onend = () => {
+      if (isListening) {
+        // If still listening but recognition ended, restart it
+        recognition.start();
+      }
+    };
+    
+    speechRecognitionRef.current = recognition;
+    console.log("Real speech recognition initialized");
   };
   
   const speakQuestion = (question: string) => {
@@ -150,64 +260,40 @@ const InterviewSession = () => {
     setIsListening(true);
     setIsRecording(true);
     
-    // Simulate recording start
-    toast({
-      title: "Recording started",
-      description: "You can start speaking now",
-    });
-    
-    // In a real app, we would start the actual recording here
-    // For simulation, we'll simulate live transcription updates
-    let transcriptionText = "";
-    
-    // Simulate transcription being built word by word
-    const transcriptionPhrases = [
-      "Hello, ",
-      "I'm responding ",
-      "to the question. ",
-      "I believe ",
-      "my experience ",
-      "with this topic ",
-      "is quite relevant ",
-      "because I've worked ",
-      "on similar projects ",
-      "in the past. ",
-      "For example, ",
-      "in my previous role, ",
-      "I implemented ",
-      "a solution that ",
-      "increased efficiency ",
-      "by twenty percent."
-    ];
-    
-    let phraseIndex = 0;
-    const transcriptionInterval = setInterval(() => {
-      if (phraseIndex < transcriptionPhrases.length && isListening) {
-        transcriptionText += transcriptionPhrases[phraseIndex];
-        setLiveTranscription(transcriptionText);
-        phraseIndex++;
+    // Begin actual speech recognition
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.start();
         
-        // Simulate behavioral analysis updates during recording
-        if (interviewMode === "video") {
-          updateBehaviorAnalysis("eyeContact", Math.random() * 100);
-          updateBehaviorAnalysis("confidence", Math.random() * 100);
-          updateBehaviorAnalysis("engagement", Math.random() * 100);
-          updateBehaviorAnalysis("attentiveness", Math.random() * 100);
-        }
-        
-        updateBehaviorAnalysis("clarity", Math.random() * 100);
-      } else {
-        clearInterval(transcriptionInterval);
+        toast({
+          title: "Recording started",
+          description: "You can start speaking now",
+        });
+      } catch (error) {
+        console.error("Error starting speech recognition:", error);
+        toast({
+          variant: "destructive",
+          title: "Recording error",
+          description: "Could not start recording. Please try again.",
+        });
       }
-    }, 1000);
-    
-    // Save the interval ID for cleanup
-    return () => clearInterval(transcriptionInterval);
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Speech recognition not available",
+        description: "Your browser may not support this feature or permissions were denied.",
+      });
+    }
   };
   
   const stopRecording = () => {
     setIsListening(false);
     setIsRecording(false);
+    
+    // Stop actual speech recognition
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+    }
     
     // Simulate processing the recording
     toast({
@@ -217,7 +303,7 @@ const InterviewSession = () => {
     
     // Simulate a delay for processing
     setTimeout(() => {
-      // This would be the transcribed text in a real app
+      // Use the transcribed text or the text input
       const simulatedAnswer = interviewMode === "text" 
         ? textAnswer 
         : liveTranscription || `This is a simulated answer for the ${interviewMode} interview mode. In a real app, this would be the transcribed speech or video analysis.`;

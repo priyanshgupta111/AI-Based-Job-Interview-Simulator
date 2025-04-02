@@ -1,9 +1,12 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useInterview } from "@/contexts/InterviewContext";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Plus } from "lucide-react";
 import type { JobField } from "@/contexts/InterviewContext";
 
 const jobFields = [
@@ -16,12 +19,28 @@ const jobFields = [
 ];
 
 const WelcomePage = () => {
-  const { userName, setJobField } = useInterview();
+  const { userName, setJobField, addCustomJobField } = useInterview();
   const navigate = useNavigate();
+  const [customField, setCustomField] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [customFieldError, setCustomFieldError] = useState(false);
 
   const handleSelectField = (field: JobField) => {
     setJobField(field);
     navigate("/interview-prep");
+  };
+
+  const handleAddCustomField = () => {
+    if (!customField.trim()) {
+      setCustomFieldError(true);
+      return;
+    }
+    
+    const newFieldId = customField.toLowerCase().replace(/\s+/g, '-');
+    addCustomJobField(newFieldId, customField);
+    setCustomField("");
+    setDialogOpen(false);
+    handleSelectField(newFieldId as JobField);
   };
 
   return (
@@ -57,6 +76,56 @@ const WelcomePage = () => {
               </CardContent>
             </Card>
           ))}
+          
+          {/* Custom Field Card */}
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Card className="border border-dashed border-gray-300 hover:border-interview-primary hover:shadow-md transition-all cursor-pointer bg-gray-50">
+                <CardHeader className="pb-2">
+                  <div className="text-4xl mb-2 flex justify-center">
+                    <Plus className="h-12 w-12 text-gray-400" />
+                  </div>
+                  <CardTitle className="text-center">Add Custom Field</CardTitle>
+                  <CardDescription className="text-center">
+                    Don't see your field? Add it here
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-600 text-sm text-center">
+                    Create a custom interview experience for any job field
+                  </p>
+                </CardContent>
+              </Card>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add a Custom Job Field</DialogTitle>
+              </DialogHeader>
+              <div className="py-4">
+                <label htmlFor="customField" className="text-sm font-medium mb-2 block">
+                  Job Field Name
+                </label>
+                <Input
+                  id="customField"
+                  value={customField}
+                  onChange={(e) => {
+                    setCustomField(e.target.value);
+                    setCustomFieldError(false);
+                  }}
+                  placeholder="e.g., Healthcare, Finance, Education"
+                  className={customFieldError ? "border-red-500" : ""}
+                />
+                {customFieldError && (
+                  <p className="text-red-500 text-sm mt-1">Please enter a job field name</p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button onClick={handleAddCustomField} className="interview-button">
+                  Continue to Interview
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>

@@ -30,6 +30,7 @@ const InterviewSession = () => {
   const [showCountdown, setShowCountdown] = useState(false);
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   const [attentionWarning, setAttentionWarning] = useState(false);
+  const [liveTranscription, setLiveTranscription] = useState("");
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -110,6 +111,7 @@ const InterviewSession = () => {
   
   const startAnswering = () => {
     setIsAnswering(true);
+    setLiveTranscription("");
     
     if (interviewMode === "audio" || interviewMode === "video") {
       // Start countdown before recording
@@ -155,18 +157,52 @@ const InterviewSession = () => {
     });
     
     // In a real app, we would start the actual recording here
-    // For simulation, we'll just set a timeout
-    setTimeout(() => {
-      // Simulate behavioral analysis updates during recording
-      if (interviewMode === "video") {
-        updateBehaviorAnalysis("eyeContact", Math.random() * 100);
-        updateBehaviorAnalysis("confidence", Math.random() * 100);
-        updateBehaviorAnalysis("engagement", Math.random() * 100);
-        updateBehaviorAnalysis("attentiveness", Math.random() * 100);
+    // For simulation, we'll simulate live transcription updates
+    let transcriptionText = "";
+    
+    // Simulate transcription being built word by word
+    const transcriptionPhrases = [
+      "Hello, ",
+      "I'm responding ",
+      "to the question. ",
+      "I believe ",
+      "my experience ",
+      "with this topic ",
+      "is quite relevant ",
+      "because I've worked ",
+      "on similar projects ",
+      "in the past. ",
+      "For example, ",
+      "in my previous role, ",
+      "I implemented ",
+      "a solution that ",
+      "increased efficiency ",
+      "by twenty percent."
+    ];
+    
+    let phraseIndex = 0;
+    const transcriptionInterval = setInterval(() => {
+      if (phraseIndex < transcriptionPhrases.length && isListening) {
+        transcriptionText += transcriptionPhrases[phraseIndex];
+        setLiveTranscription(transcriptionText);
+        phraseIndex++;
+        
+        // Simulate behavioral analysis updates during recording
+        if (interviewMode === "video") {
+          updateBehaviorAnalysis("eyeContact", Math.random() * 100);
+          updateBehaviorAnalysis("confidence", Math.random() * 100);
+          updateBehaviorAnalysis("engagement", Math.random() * 100);
+          updateBehaviorAnalysis("attentiveness", Math.random() * 100);
+        }
+        
+        updateBehaviorAnalysis("clarity", Math.random() * 100);
+      } else {
+        clearInterval(transcriptionInterval);
       }
-      
-      updateBehaviorAnalysis("clarity", Math.random() * 100);
-    }, 2000);
+    }, 1000);
+    
+    // Save the interval ID for cleanup
+    return () => clearInterval(transcriptionInterval);
   };
   
   const stopRecording = () => {
@@ -184,7 +220,7 @@ const InterviewSession = () => {
       // This would be the transcribed text in a real app
       const simulatedAnswer = interviewMode === "text" 
         ? textAnswer 
-        : `This is a simulated answer for the ${interviewMode} interview mode. In a real app, this would be the transcribed speech or video analysis.`;
+        : liveTranscription || `This is a simulated answer for the ${interviewMode} interview mode. In a real app, this would be the transcribed speech or video analysis.`;
       
       addAnswer(simulatedAnswer);
       
@@ -193,6 +229,7 @@ const InterviewSession = () => {
         setTextAnswer("");
       }
       
+      setLiveTranscription("");
       setIsAnswering(false);
       
       // Move to next question or finish interview
@@ -390,29 +427,44 @@ const InterviewSession = () => {
                     </>
                   ) : (
                     <>
-                      <div className="bg-gray-50 rounded-lg p-4 min-h-[150px] flex items-center justify-center">
+                      <div className="bg-gray-50 rounded-lg p-4 min-h-[150px] flex flex-col">
                         {!permissionsGranted ? (
-                          <Button onClick={requestPermissions}>
-                            <Mic className="mr-2 h-4 w-4" />
-                            Allow Microphone Access
-                          </Button>
+                          <div className="flex items-center justify-center h-full">
+                            <Button onClick={requestPermissions}>
+                              <Mic className="mr-2 h-4 w-4" />
+                              Allow Microphone Access
+                            </Button>
+                          </div>
                         ) : !isAnswering ? (
-                          <div className="text-center text-gray-500">
+                          <div className="text-center text-gray-500 flex-grow flex items-center justify-center">
                             <p>Press the button below when you're ready to answer.</p>
                           </div>
-                        ) : isListening ? (
-                          <div className="text-center">
-                            <div className="w-16 h-16 bg-interview-primary rounded-full flex items-center justify-center mx-auto mb-2">
-                              <Mic className="h-8 w-8 text-white" />
-                            </div>
-                            <p className="text-interview-primary animate-pulse">Listening...</p>
-                          </div>
                         ) : showCountdown ? (
-                          <div className="text-6xl font-bold text-interview-primary">
-                            {countdown}
+                          <div className="text-center flex-grow flex items-center justify-center">
+                            <div className="text-6xl font-bold text-interview-primary">
+                              {countdown}
+                            </div>
+                          </div>
+                        ) : isListening ? (
+                          <div className="flex flex-col h-full">
+                            <div className="text-center mb-4">
+                              <div className="w-16 h-16 bg-interview-primary rounded-full flex items-center justify-center mx-auto mb-2">
+                                <Mic className="h-8 w-8 text-white" />
+                              </div>
+                              <p className="text-interview-primary animate-pulse mb-2">Listening...</p>
+                            </div>
+                            
+                            {/* Live transcription area */}
+                            <div className="flex-grow overflow-auto bg-white border border-gray-200 rounded-lg p-3 text-gray-800">
+                              {liveTranscription ? liveTranscription : (
+                                <p className="text-gray-400 italic">Your speech will appear here as you speak...</p>
+                              )}
+                            </div>
                           </div>
                         ) : (
-                          <p className="text-gray-500">Preparing...</p>
+                          <div className="text-center text-gray-500 flex-grow flex items-center justify-center">
+                            <p>Preparing...</p>
+                          </div>
                         )}
                       </div>
                       

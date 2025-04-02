@@ -228,11 +228,26 @@ const InterviewSession = () => {
     const overallScore = 65 + Math.floor(Math.random() * 30);
     const passed = overallScore >= 70;
     
+    // Add the missing criteria and detailedReview properties
+    const criteria = {
+      technicalKnowledge: 60 + Math.floor(Math.random() * 40),
+      communication: 60 + Math.floor(Math.random() * 40),
+      problemSolving: 60 + Math.floor(Math.random() * 40),
+      culturalFit: 60 + Math.floor(Math.random() * 40),
+      experience: 60 + Math.floor(Math.random() * 40),
+    };
+    
+    const detailedReview = passed 
+      ? "The candidate demonstrated good knowledge and communication skills throughout the interview. They provided structured responses with relevant examples and showed a strong understanding of the core concepts in their field. Their answers were generally clear and concise."
+      : "The candidate shows potential but needs improvement in several key areas. Their responses lacked specific examples in some cases, and technical knowledge could be stronger. With further preparation and practice, they could become a stronger candidate.";
+    
     setFeedback({
       strengths,
       improvements,
       overallScore,
       passed,
+      criteria,
+      detailedReview,
     });
     
     setTimeout(() => navigate("/interview-feedback"), 1000);

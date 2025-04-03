@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -5,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useInterview } from "@/contexts/InterviewContext";
 import { Textarea } from "@/components/ui/textarea";
-import { Mic, MicOff, Camera, CameraOff, Video, VideoOff, X, Check } from "lucide-react";
+import { Mic, MicOff, Camera, CameraOff, Video, VideoOff, X, Check, Volume2, VolumeX } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface SpeechRecognition extends EventTarget {
@@ -52,6 +53,7 @@ declare global {
   interface Window {
     SpeechRecognition: new () => SpeechRecognition;
     webkitSpeechRecognition: new () => SpeechRecognition;
+    speechSynthesis: SpeechSynthesis;
   }
 }
 
@@ -77,6 +79,8 @@ const InterviewSession = () => {
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   const [attentionWarning, setAttentionWarning] = useState(false);
   const [liveTranscription, setLiveTranscription] = useState("");
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -94,10 +98,18 @@ const InterviewSession = () => {
     }
     
     const timer = setTimeout(() => {
-      speakQuestion(questions[0]);
+      if (questions.length > 0) {
+        speakQuestion(questions[0]);
+      }
     }, 1000);
     
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      // Stop any ongoing speech when component unmounts
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
   }, []);
   
   const requestPermissions = async () => {
@@ -217,6 +229,63 @@ const InterviewSession = () => {
       title: "Interviewer",
       description: question,
       duration: 5000,
+    });
+    
+    // Only speak aloud if in audio or video mode and audio is enabled
+    if ((interviewMode === "audio" || interviewMode === "video") && audioEnabled && window.speechSynthesis) {
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+      
+      // Create a new speech synthesis utterance
+      const utterance = new SpeechSynthesisUtterance(question);
+      
+      // Set voice properties
+      utterance.rate = 1.0; // Normal speaking rate
+      utterance.pitch = 1.0; // Normal pitch
+      utterance.volume = 1.0; // Full volume
+      
+      // Try to use a professional-sounding voice if available
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoices = voices.filter(voice => 
+        voice.lang.includes('en-') && !voice.name.includes('Google')
+      );
+      
+      if (preferredVoices.length > 0) {
+        // Use the first preferred voice
+        utterance.voice = preferredVoices[0];
+      }
+      
+      // Event handlers
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+      };
+      
+      utterance.onend = () => {
+        setIsSpeaking(false);
+      };
+      
+      utterance.onerror = (event) => {
+        console.error("Speech synthesis error:", event);
+        setIsSpeaking(false);
+      };
+      
+      // Speak the utterance
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+  
+  const toggleAudio = () => {
+    setAudioEnabled(!audioEnabled);
+    
+    // If turning off while speaking, stop the current speech
+    if (audioEnabled && isSpeaking && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+    
+    toast({
+      title: audioEnabled ? "Audio disabled" : "Audio enabled",
+      description: audioEnabled ? "Questions will no longer be spoken aloud" : "Questions will now be spoken aloud",
     });
   };
   
@@ -379,13 +448,25 @@ const InterviewSession = () => {
             <h1 className="text-2xl font-bold text-gray-800">
               {interviewMode?.charAt(0).toUpperCase() + interviewMode?.slice(1)} Interview
             </h1>
-            <Button 
-              variant="outline" 
-              className="border-interview-accent text-interview-accent hover:bg-interview-accent hover:text-white"
-              onClick={handleEndInterview}
-            >
-              End Interview
-            </Button>
+            <div className="flex items-center gap-2">
+              {(interviewMode === "audio" || interviewMode === "video") && (
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={toggleAudio}
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  {audioEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+                </Button>
+              )}
+              <Button 
+                variant="outline" 
+                className="border-interview-accent text-interview-accent hover:bg-interview-accent hover:text-white"
+                onClick={handleEndInterview}
+              >
+                End Interview
+              </Button>
+            </div>
           </div>
           <div className="mt-2">
             <div className="flex justify-between text-sm text-gray-600 mb-1">
@@ -475,7 +556,15 @@ const InterviewSession = () => {
             <Card className="bg-white shadow-md">
               <CardContent className="p-6">
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold mb-2">Current Question:</h2>
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-xl font-semibold">Current Question:</h2>
+                    {isSpeaking && (
+                      <div className="flex items-center text-sm text-interview-primary">
+                        <span className="inline-block w-2 h-2 bg-interview-primary rounded-full mr-1 animate-pulse"></span>
+                        Speaking...
+                      </div>
+                    )}
+                  </div>
                   <p className="text-lg">{questions[currentQuestionIndex]}</p>
                 </div>
                 

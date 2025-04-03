@@ -111,8 +111,12 @@ const InterviewSession = () => {
           video: true, 
           audio: true 
         });
+        
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(error => {
+            console.error("Error playing video:", error);
+          });
         }
       } else if (interviewMode === "audio") {
         await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -422,6 +426,7 @@ const InterviewSession = () => {
                       <video
                         ref={videoRef}
                         autoPlay
+                        playsInline
                         muted
                         className="w-full h-full object-cover"
                       />

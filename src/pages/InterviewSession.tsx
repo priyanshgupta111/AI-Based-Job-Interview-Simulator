@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -41,7 +40,7 @@ interface SpeechRecognitionResult {
   isFinal: boolean;
   length: number;
   item: (index: number) => SpeechRecognitionAlternative;
-  [index: number]: SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionAlternative;
 }
 
 interface SpeechRecognitionAlternative {
@@ -49,25 +48,28 @@ interface SpeechRecognitionAlternative {
   confidence: number;
 }
 
-// Define the SpeechSynthesis interface properly
-interface SpeechSynthesis {
-  speak: (utterance: SpeechSynthesisUtterance) => void;
-  cancel: () => void;
-  getVoices: () => SpeechSynthesisVoice[];
-  pause: () => void;
-  resume: () => void;
+interface SpeechSynthesisUtteranceEvent extends Event {
+  utterance: SpeechSynthesisUtterance;
+  charIndex?: number;
+  charLength?: number;
+  elapsedTime?: number;
+  name?: string;
 }
 
 interface SpeechSynthesisUtterance extends EventTarget {
   text: string;
+  lang: string;
   voice: SpeechSynthesisVoice | null;
   volume: number;
   rate: number;
   pitch: number;
-  lang: string;
-  onstart: ((this: SpeechSynthesisUtterance, ev: Event) => any) | null;
-  onend: ((this: SpeechSynthesisUtterance, ev: Event) => any) | null;
-  onerror: ((this: SpeechSynthesisUtterance, ev: Event) => any) | null;
+  onboundary: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
+  onend: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
+  onerror: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
+  onmark: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
+  onpause: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
+  onresume: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
+  onstart: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
 }
 
 interface SpeechSynthesisVoice {
@@ -76,6 +78,17 @@ interface SpeechSynthesisVoice {
   lang: string;
   localService: boolean;
   default: boolean;
+}
+
+interface SpeechSynthesis {
+  speak: (utterance: SpeechSynthesisUtterance) => void;
+  cancel: () => void;
+  getVoices: () => SpeechSynthesisVoice[];
+  pause: () => void;
+  resume: () => void;
+  speaking: boolean;
+  pending: boolean;
+  paused: boolean;
 }
 
 declare global {
@@ -135,7 +148,6 @@ const InterviewSession = () => {
     
     return () => {
       clearTimeout(timer);
-      // Stop any ongoing speech when component unmounts
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
@@ -261,31 +273,24 @@ const InterviewSession = () => {
       duration: 5000,
     });
     
-    // Only speak aloud if in audio or video mode and audio is enabled
     if ((interviewMode === "audio" || interviewMode === "video") && audioEnabled && window.speechSynthesis) {
-      // Cancel any ongoing speech
       window.speechSynthesis.cancel();
       
-      // Create a new speech synthesis utterance
       const utterance = new window.SpeechSynthesisUtterance(question);
       
-      // Set voice properties
-      utterance.rate = 1.0; // Normal speaking rate
-      utterance.pitch = 1.0; // Normal pitch
-      utterance.volume = 1.0; // Full volume
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
       
-      // Try to use a professional-sounding voice if available
       const voices = window.speechSynthesis.getVoices();
       const preferredVoices = voices.filter(voice => 
         voice.lang.includes('en-') && !voice.name.includes('Google')
       );
       
       if (preferredVoices.length > 0) {
-        // Use the first preferred voice
         utterance.voice = preferredVoices[0];
       }
       
-      // Event handlers
       utterance.onstart = () => {
         setIsSpeaking(true);
       };
@@ -294,12 +299,11 @@ const InterviewSession = () => {
         setIsSpeaking(false);
       };
       
-      utterance.onerror = (event) => {
-        console.error("Speech synthesis error:", event);
+      utterance.onerror = () => {
+        console.error("Speech synthesis error");
         setIsSpeaking(false);
       };
       
-      // Speak the utterance
       window.speechSynthesis.speak(utterance);
     }
   };
@@ -307,7 +311,6 @@ const InterviewSession = () => {
   const toggleAudio = () => {
     setAudioEnabled(!audioEnabled);
     
-    // If turning off while speaking, stop the current speech
     if (audioEnabled && isSpeaking && window.speechSynthesis) {
       window.speechSynthesis.cancel();
       setIsSpeaking(false);

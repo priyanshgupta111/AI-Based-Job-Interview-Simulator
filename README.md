@@ -1,11 +1,11 @@
 
-# AI-Based Interview Simulator - Team LetUsCook
+# AI-Based Job Interview Simulator - Team LetUsCook
 
 ## 🏆 CodeForge'25 Hackathon Project
 
 ## Project Overview
 
-AI-Based Interview Simulator is an advanced tool designed to help job seekers practice and improve their interview skills through AI-powered simulations. Our platform provides a realistic interview experience with real-time feedback, helping users gain confidence and perform better in actual job interviews.
+AI-Based Job Interview Simulator is an advanced tool designed to help job seekers practice and improve their interview skills through AI-powered simulations. Our platform provides a realistic interview experience with real-time feedback, helping users gain confidence and perform better in actual job interviews.
 
 ### Problem Statement
 

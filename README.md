@@ -28,6 +28,8 @@ Job interviews are often stressful and challenging, especially for those with li
 
 ### Event: CodeForge'25 Hackathon  
 
+### URL: [https://jobsimulatorai.netlify.app/](https://jobsimulatorai.netlify.app/)
+
 ## Dependencies
 
 - **React** (^18.3.1) - Frontend framework

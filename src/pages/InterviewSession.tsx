@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,10 +5,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useInterview } from "@/contexts/InterviewContext";
 import { Textarea } from "@/components/ui/textarea";
-import { Mic, MicOff, Camera, X, Check } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { Mic, MicOff, Camera, CameraOff, Video, VideoOff, X, Check } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
-// Speech recognition interface
 interface SpeechRecognition extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
@@ -88,7 +86,6 @@ const InterviewSession = () => {
   
   const progressPercentage = ((currentQuestionIndex) / questions.length) * 100;
   
-  // Initialize permissions based on mode
   useEffect(() => {
     if (interviewMode === "video" || interviewMode === "audio") {
       requestPermissions();
@@ -96,7 +93,6 @@ const InterviewSession = () => {
       setPermissionsGranted(true);
     }
     
-    // Simulate AI asking the first question
     const timer = setTimeout(() => {
       speakQuestion(questions[0]);
     }, 1000);
@@ -114,9 +110,19 @@ const InterviewSession = () => {
         
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          
           videoRef.current.play().catch(error => {
             console.error("Error playing video:", error);
           });
+          
+          setTimeout(() => {
+            if (videoRef.current && videoRef.current.paused) {
+              console.log("Video is still paused, trying to play again");
+              videoRef.current.play().catch(e => console.error("Second play attempt failed:", e));
+            } else {
+              console.log("Video is playing successfully");
+            }
+          }, 1000);
         }
       } else if (interviewMode === "audio") {
         await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -128,7 +134,6 @@ const InterviewSession = () => {
         description: `${interviewMode === "video" ? "Camera and microphone" : "Microphone"} access allowed`,
       });
       
-      // Initialize speech recognition for audio mode
       if (interviewMode === "audio" || interviewMode === "video") {
         initSpeechRecognition();
       }
@@ -144,7 +149,6 @@ const InterviewSession = () => {
   };
   
   const initSpeechRecognition = () => {
-    // Use the Web Speech API for real speech recognition
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
@@ -175,13 +179,9 @@ const InterviewSession = () => {
         }
       }
       
-      // Update live transcription
       setLiveTranscription(finalTranscript + interimTranscript);
       
-      // Update behavior analysis
       if (interviewMode === "video") {
-        // For a real app, we would analyze the video feed here
-        // For now, just simulate random scores
         updateBehaviorAnalysis("eyeContact", Math.random() * 100);
         updateBehaviorAnalysis("confidence", Math.random() * 100);
         updateBehaviorAnalysis("engagement", Math.random() * 100);
@@ -202,7 +202,6 @@ const InterviewSession = () => {
     
     recognition.onend = () => {
       if (isListening) {
-        // If still listening but recognition ended, restart it
         recognition.start();
       }
     };
@@ -212,10 +211,8 @@ const InterviewSession = () => {
   };
   
   const speakQuestion = (question: string) => {
-    // In a real app, we would use the Web Speech API or a similar library to speak the question
     console.log("AI asking:", question);
     
-    // Simulate AI speaking
     toast({
       title: "Interviewer",
       description: question,
@@ -228,7 +225,6 @@ const InterviewSession = () => {
     setLiveTranscription("");
     
     if (interviewMode === "audio" || interviewMode === "video") {
-      // Start countdown before recording
       setShowCountdown(true);
       let count = 3;
       setCountdown(count);
@@ -245,11 +241,9 @@ const InterviewSession = () => {
       }, 1000);
     }
     
-    // Simulate random attention checks for video mode
     if (interviewMode === "video") {
-      // Random attention check simulation
       const attentionCheckInterval = setInterval(() => {
-        const shouldWarn = Math.random() > 0.7; // 30% chance of warning
+        const shouldWarn = Math.random() > 0.7;
         if (shouldWarn && isRecording) {
           setAttentionWarning(true);
           setTimeout(() => setAttentionWarning(false), 3000);
@@ -264,7 +258,6 @@ const InterviewSession = () => {
     setIsListening(true);
     setIsRecording(true);
     
-    // Begin actual speech recognition
     if (speechRecognitionRef.current) {
       try {
         speechRecognitionRef.current.start();
@@ -294,27 +287,22 @@ const InterviewSession = () => {
     setIsListening(false);
     setIsRecording(false);
     
-    // Stop actual speech recognition
     if (speechRecognitionRef.current) {
       speechRecognitionRef.current.stop();
     }
     
-    // Simulate processing the recording
     toast({
       title: "Processing your answer",
       description: "Please wait...",
     });
     
-    // Simulate a delay for processing
     setTimeout(() => {
-      // Use the transcribed text or the text input
       const simulatedAnswer = interviewMode === "text" 
         ? textAnswer 
         : liveTranscription || `This is a simulated answer for the ${interviewMode} interview mode. In a real app, this would be the transcribed speech or video analysis.`;
       
       addAnswer(simulatedAnswer);
       
-      // Clear text input if in text mode
       if (interviewMode === "text") {
         setTextAnswer("");
       }
@@ -322,23 +310,19 @@ const InterviewSession = () => {
       setLiveTranscription("");
       setIsAnswering(false);
       
-      // Move to next question or finish interview
       if (currentQuestionIndex < questions.length - 1) {
         setCurrentQuestionIndex(currentQuestionIndex + 1);
         
-        // Ask the next question after a short delay
         setTimeout(() => {
           speakQuestion(questions[currentQuestionIndex + 1]);
         }, 1000);
       } else {
-        // Generate feedback and navigate to feedback page
         generateFeedback();
       }
     }, 2000);
   };
   
   const generateFeedback = () => {
-    // Simulate generating feedback
     const strengths = [
       "Clear communication style",
       "Structured answers with relevant examples",
@@ -351,11 +335,9 @@ const InterviewSession = () => {
       "Consider adding more specific metrics to demonstrate impact",
     ];
     
-    // Random score between 65 and 95
     const overallScore = 65 + Math.floor(Math.random() * 30);
     const passed = overallScore >= 70;
     
-    // Add the missing criteria and detailedReview properties
     const criteria = {
       technicalKnowledge: 60 + Math.floor(Math.random() * 40),
       communication: 60 + Math.floor(Math.random() * 40),
@@ -381,7 +363,6 @@ const InterviewSession = () => {
   };
   
   const handleEndInterview = () => {
-    // Generate feedback and navigate to feedback page
     generateFeedback();
   };
   
@@ -416,20 +397,35 @@ const InterviewSession = () => {
         </header>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Video feed for video mode */}
           {interviewMode === "video" && (
             <div className="md:col-span-1">
               <Card className="bg-white shadow-md h-full">
                 <CardContent className="p-4">
                   <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden relative">
                     {permissionsGranted ? (
-                      <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className="w-full h-full object-cover"
-                      />
+                      <>
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full h-full object-cover"
+                          style={{ transform: 'scaleX(-1)' }}
+                        />
+                        {!videoRef.current?.srcObject && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-70">
+                            <p className="text-gray-700">Video feed not available</p>
+                            <Button 
+                              size="sm" 
+                              className="ml-2" 
+                              onClick={requestPermissions}
+                            >
+                              <Camera className="mr-2 h-4 w-4" />
+                              Retry
+                            </Button>
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <div className="flex items-center justify-center h-full">
                         <Button onClick={requestPermissions}>
@@ -439,7 +435,6 @@ const InterviewSession = () => {
                       </div>
                     )}
                     
-                    {/* Recording indicator */}
                     {isRecording && (
                       <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full flex items-center">
                         <span className="w-2 h-2 bg-white rounded-full mr-1 animate-pulse"></span>
@@ -447,14 +442,12 @@ const InterviewSession = () => {
                       </div>
                     )}
                     
-                    {/* Countdown overlay */}
                     {showCountdown && (
                       <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center text-white text-6xl font-bold">
                         {countdown}
                       </div>
                     )}
                     
-                    {/* Attention warning */}
                     {attentionWarning && (
                       <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-3 py-2 rounded-lg flex items-center">
                         <span className="mr-1">⚠️</span>
@@ -478,7 +471,6 @@ const InterviewSession = () => {
             </div>
           )}
           
-          {/* Main interview area */}
           <div className={`${interviewMode === "video" ? "md:col-span-2" : "md:col-span-3"}`}>
             <Card className="bg-white shadow-md">
               <CardContent className="p-6">
@@ -545,7 +537,6 @@ const InterviewSession = () => {
                               <p className="text-interview-primary animate-pulse mb-2">Listening...</p>
                             </div>
                             
-                            {/* Live transcription area */}
                             <div className="flex-grow overflow-auto bg-white border border-gray-200 rounded-lg p-3 text-gray-800">
                               {liveTranscription ? liveTranscription : (
                                 <p className="text-gray-400 italic">Your speech will appear here as you speak...</p>

@@ -41,7 +41,7 @@ interface SpeechRecognitionResult {
   isFinal: boolean;
   length: number;
   item: (index: number) => SpeechRecognitionAlternative;
-  [index: number]: SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionResult;
 }
 
 interface SpeechRecognitionAlternative {
@@ -49,11 +49,41 @@ interface SpeechRecognitionAlternative {
   confidence: number;
 }
 
+// Define the SpeechSynthesis interface properly
+interface SpeechSynthesis {
+  speak: (utterance: SpeechSynthesisUtterance) => void;
+  cancel: () => void;
+  getVoices: () => SpeechSynthesisVoice[];
+  pause: () => void;
+  resume: () => void;
+}
+
+interface SpeechSynthesisUtterance extends EventTarget {
+  text: string;
+  voice: SpeechSynthesisVoice | null;
+  volume: number;
+  rate: number;
+  pitch: number;
+  lang: string;
+  onstart: ((this: SpeechSynthesisUtterance, ev: Event) => any) | null;
+  onend: ((this: SpeechSynthesisUtterance, ev: Event) => any) | null;
+  onerror: ((this: SpeechSynthesisUtterance, ev: Event) => any) | null;
+}
+
+interface SpeechSynthesisVoice {
+  voiceURI: string;
+  name: string;
+  lang: string;
+  localService: boolean;
+  default: boolean;
+}
+
 declare global {
   interface Window {
     SpeechRecognition: new () => SpeechRecognition;
     webkitSpeechRecognition: new () => SpeechRecognition;
     speechSynthesis: SpeechSynthesis;
+    SpeechSynthesisUtterance: new (text: string) => SpeechSynthesisUtterance;
   }
 }
 
@@ -237,7 +267,7 @@ const InterviewSession = () => {
       window.speechSynthesis.cancel();
       
       // Create a new speech synthesis utterance
-      const utterance = new SpeechSynthesisUtterance(question);
+      const utterance = new window.SpeechSynthesisUtterance(question);
       
       // Set voice properties
       utterance.rate = 1.0; // Normal speaking rate

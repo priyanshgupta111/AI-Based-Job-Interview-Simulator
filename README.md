@@ -21,10 +21,10 @@ Job interviews are often stressful and challenging, especially for those with li
 
 ## Team Members
 
-- Mannat Kapoor
-- Priyansh Gupta
-- Aakash Tutlani
-- Ishika Shokeen
+- Mannat Kapoor (Team Leader): Frontend Developer, AI Developer and Idea proposer
+- Priyansh Gupta: Backend Developer and AI Developer
+- Aakash Tutlani: AI Developer
+- Ishika Shokeen: Project Tester
 
 ## Dependencies
 

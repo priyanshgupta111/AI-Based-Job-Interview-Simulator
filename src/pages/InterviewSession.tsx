@@ -1,51 +1,71 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { useInterview } from "@/contexts/InterviewContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
-import { Mic, MicOff, Camera, CameraOff, Video, VideoOff, X, Check, Volume2, VolumeX } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+import { Mic, MicOff, Video, VideoOff, Send, Volume, Volume2, VolumeX } from "lucide-react";
+import { toast } from "sonner";
 
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-  onresult: (event: SpeechRecognitionEvent) => void;
-  onerror: (event: SpeechRecognitionErrorEvent) => void;
-  onend: () => void;
-}
+// Mock interview questions based on job field
+const getInterviewQuestions = (jobField: string) => {
+  const questions: Record<string, string[]> = {
+    "software-engineering": [
+      "Tell me about your experience with React and TypeScript.",
+      "How do you approach debugging a complex issue in your code?",
+      "Describe a challenging project you worked on and how you overcame obstacles.",
+      "How do you stay updated with the latest technologies and programming practices?",
+      "Explain how you would design a scalable web application architecture.",
+    ],
+    "data-science": [
+      "Explain the difference between supervised and unsupervised learning.",
+      "How do you handle missing data in a dataset?",
+      "Describe a data science project you've worked on and the impact it had.",
+      "What evaluation metrics do you use for classification problems?",
+      "How would you explain a complex machine learning model to non-technical stakeholders?",
+    ],
+    "marketing": [
+      "Describe a successful marketing campaign you've developed.",
+      "How do you measure the success of your marketing efforts?",
+      "What strategies do you use to identify and reach your target audience?",
+      "How do you stay current with digital marketing trends?",
+      "Describe how you would approach marketing a new product launch.",
+    ],
+    // Default questions for any other job field
+    "default": [
+      "Tell me about yourself and your background.",
+      "What are your greatest professional strengths?",
+      "What do you consider to be your weaknesses?",
+      "Why are you interested in this position?",
+      "Where do you see yourself in five years?",
+    ],
+  };
 
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-  message: string;
-}
+  return questions[jobField] || questions["default"];
+};
 
+// Define TypeScript interfaces for speech recognition
 interface SpeechRecognitionEvent extends Event {
-  resultIndex: number;
   results: SpeechRecognitionResultList;
 }
 
 interface SpeechRecognitionResultList {
-  length: number;
-  item: (index: number) => SpeechRecognitionResult;
+  readonly length: number;
+  item(index: number): SpeechRecognitionResult;
   [index: number]: SpeechRecognitionResult;
 }
 
 interface SpeechRecognitionResult {
-  isFinal: boolean;
-  length: number;
-  item: (index: number) => SpeechRecognitionAlternative;
+  readonly isFinal: boolean;
+  readonly length: number;
+  item(index: number): SpeechRecognitionAlternative;
   [index: number]: SpeechRecognitionAlternative;
 }
 
 interface SpeechRecognitionAlternative {
-  transcript: string;
-  confidence: number;
+  readonly transcript: string;
+  readonly confidence: number;
 }
 
 interface SpeechSynthesisUtteranceEvent extends Event {
@@ -56,220 +76,216 @@ interface SpeechSynthesisUtteranceEvent extends Event {
   name?: string;
 }
 
-interface SpeechSynthesisUtterance extends EventTarget {
-  text: string;
-  lang: string;
-  voice: SpeechSynthesisVoice | null;
-  volume: number;
-  rate: number;
-  pitch: number;
-  onboundary: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
-  onend: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
-  onerror: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
-  onmark: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
-  onpause: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
-  onresume: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
-  onstart: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
-}
-
-interface SpeechSynthesisVoice {
-  voiceURI: string;
-  name: string;
-  lang: string;
-  localService: boolean;
-  default: boolean;
-}
-
-interface SpeechSynthesis {
-  speak: (utterance: SpeechSynthesisUtterance) => void;
-  cancel: () => void;
-  getVoices: () => SpeechSynthesisVoice[];
-  pause: () => void;
-  resume: () => void;
-  speaking: boolean;
-  pending: boolean;
-  paused: boolean;
-}
-
+// Augment the window interface for TypeScript
 declare global {
   interface Window {
     SpeechRecognition: new () => SpeechRecognition;
     webkitSpeechRecognition: new () => SpeechRecognition;
-    speechSynthesis: SpeechSynthesis;
     SpeechSynthesisUtterance: new (text: string) => SpeechSynthesisUtterance;
+  }
+
+  interface SpeechSynthesisUtterance extends EventTarget {
+    text: string;
+    lang: string;
+    voice: SpeechSynthesisVoice | null;
+    volume: number;
+    rate: number;
+    pitch: number;
+    onboundary: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
+    onend: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
+    onerror: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
+    onmark: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
+    onpause: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
+    onresume: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
+    onstart: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
+  }
+
+  interface SpeechSynthesisVoice {
+    voiceURI: string;
+    name: string;
+    lang: string;
+    localService: boolean;
+    default: boolean;
+  }
+
+  interface SpeechRecognition extends EventTarget {
+    continuous: boolean;
+    interimResults: boolean;
+    lang: string;
+    start: () => void;
+    stop: () => void;
+    abort: () => void;
+    onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
+    onerror: ((this: SpeechRecognition, ev: Event) => any) | null;
+    onend: ((this: SpeechRecognition, ev: Event) => any) | null;
   }
 }
 
 const InterviewSession = () => {
-  const {
-    userName,
-    jobField,
-    interviewMode,
-    questions,
-    currentQuestionIndex,
-    setCurrentQuestionIndex,
-    addAnswer,
-    updateBehaviorAnalysis,
-    setFeedback,
-  } = useInterview();
-  
-  const [textAnswer, setTextAnswer] = useState("");
-  const [isAnswering, setIsAnswering] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [countdown, setCountdown] = useState(3);
-  const [showCountdown, setShowCountdown] = useState(false);
-  const [permissionsGranted, setPermissionsGranted] = useState(false);
-  const [attentionWarning, setAttentionWarning] = useState(false);
-  const [liveTranscription, setLiveTranscription] = useState("");
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [audioEnabled, setAudioEnabled] = useState(true);
-  
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
+  const { userName, jobField, interviewMode } = useInterview();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   
-  const progressPercentage = ((currentQuestionIndex) / questions.length) * 100;
-  
+  const [questions] = useState<string[]>(() => getInterviewQuestions(jobField));
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [responses, setResponses] = useState<string[]>([]);
+  const [currentResponse, setCurrentResponse] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [interviewComplete, setInterviewComplete] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  // Set up camera for video mode
   useEffect(() => {
-    if (interviewMode === "video" || interviewMode === "audio") {
-      requestPermissions();
-    } else {
-      setPermissionsGranted(true);
-    }
-    
+    const setupCamera = async () => {
+      if (interviewMode === "video" && videoRef.current) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            setCameraActive(true);
+          }
+        } catch (error) {
+          console.error("Error accessing camera:", error);
+          toast.error("Unable to access camera. Please check permissions.");
+        }
+      }
+    };
+
+    // Auto start the interview with a delay
     const timer = setTimeout(() => {
-      if (questions.length > 0) {
+      if (currentQuestionIndex === 0) {
         speakQuestion(questions[0]);
       }
     }, 1000);
+    
+    if (interviewMode === "video") {
+      setupCamera();
+    }
     
     return () => {
       clearTimeout(timer);
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
+      
+      // Clean up camera
+      if (cameraActive && videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+      }
     };
-  }, []);
-  
-  const requestPermissions = async () => {
-    try {
-      if (interviewMode === "video") {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: true, 
-          audio: true 
-        });
+  }, [interviewMode, questions, currentQuestionIndex]);
+
+  // Initialize speech recognition for audio and video modes
+  useEffect(() => {
+    if (interviewMode === "audio" || interviewMode === "video") {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = true;
+        recognitionRef.current.interimResults = true;
+        recognitionRef.current.lang = 'en-US';
         
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+        recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+          const last = event.results.length - 1;
+          const transcript = event.results[last][0].transcript;
           
-          videoRef.current.play().catch(error => {
-            console.error("Error playing video:", error);
-          });
-          
-          setTimeout(() => {
-            if (videoRef.current && videoRef.current.paused) {
-              console.log("Video is still paused, trying to play again");
-              videoRef.current.play().catch(e => console.error("Second play attempt failed:", e));
-            } else {
-              console.log("Video is playing successfully");
+          setCurrentResponse(prev => {
+            // If it's a final result, append it to the current response
+            if (event.results[last].isFinal) {
+              return prev + " " + transcript;
             }
-          }, 1000);
-        }
-      } else if (interviewMode === "audio") {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Otherwise, just update the current response
+            return transcript;
+          });
+        };
+        
+        recognitionRef.current.onerror = (event) => {
+          console.error("Speech recognition error:", event);
+          setIsListening(false);
+        };
+        
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+        };
+      } else {
+        toast.error("Speech recognition is not supported in your browser.");
       }
-      
-      setPermissionsGranted(true);
-      toast({
-        title: "Permissions granted",
-        description: `${interviewMode === "video" ? "Camera and microphone" : "Microphone"} access allowed`,
-      });
-      
-      if (interviewMode === "audio" || interviewMode === "video") {
-        initSpeechRecognition();
+    }
+    
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
       }
-      
-    } catch (error) {
-      console.error("Error accessing media devices:", error);
-      toast({
-        variant: "destructive",
-        title: "Permission denied",
-        description: `Please allow ${interviewMode === "video" ? "camera and microphone" : "microphone"} access to continue`,
-      });
+    };
+  }, [interviewMode]);
+
+  const toggleListening = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+    } else {
+      if (recognitionRef.current) {
+        recognitionRef.current.start();
+        setIsListening(true);
+      }
     }
   };
-  
-  const initSpeechRecognition = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
-      console.error("Speech recognition not supported in this browser");
-      toast({
-        variant: "destructive",
-        title: "Browser not supported",
-        description: "Speech recognition is not supported in your browser. Please try Chrome, Edge, or Safari.",
-      });
+
+  const handleResponseSubmit = () => {
+    if (currentResponse.trim() === "") {
+      toast.error("Please provide a response before continuing.");
       return;
     }
     
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
+    // Save the current response
+    const updatedResponses = [...responses];
+    updatedResponses[currentQuestionIndex] = currentResponse.trim();
+    setResponses(updatedResponses);
     
-    recognition.onresult = (event) => {
-      let finalTranscript = '';
-      let interimTranscript = '';
-      
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript;
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-      
-      setLiveTranscription(finalTranscript + interimTranscript);
-      
-      if (interviewMode === "video") {
-        updateBehaviorAnalysis("eyeContact", Math.random() * 100);
-        updateBehaviorAnalysis("confidence", Math.random() * 100);
-        updateBehaviorAnalysis("engagement", Math.random() * 100);
-        updateBehaviorAnalysis("attentiveness", Math.random() * 100);
-      }
-      
-      updateBehaviorAnalysis("clarity", Math.random() * 100);
-    };
+    // Stop listening if active
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
     
-    recognition.onerror = (event) => {
-      console.error("Speech recognition error", event.error);
-      toast({
-        variant: "destructive",
-        title: "Speech recognition error",
-        description: event.message || "An error occurred during speech recognition",
-      });
-    };
-    
-    recognition.onend = () => {
-      if (isListening) {
-        recognition.start();
-      }
-    };
-    
-    speechRecognitionRef.current = recognition;
-    console.log("Real speech recognition initialized");
+    // Move to the next question or end interview
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(prevIndex => prevIndex + 1);
+      setCurrentResponse("");
+      
+      // Speak the next question after a short delay
+      setTimeout(() => {
+        speakQuestion(questions[currentQuestionIndex + 1]);
+      }, 500);
+    } else {
+      setInterviewComplete(true);
+      setTimeout(() => {
+        navigate("/interview-feedback");
+      }, 1000);
+    }
   };
-  
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleResponseSubmit();
+    }
+  };
+
+  const endInterview = () => {
+    navigate("/interview-feedback");
+  };
+
   const speakQuestion = (question: string) => {
-    console.log("AI asking:", question);
-    
-    toast({
-      title: "Interviewer",
-      description: question,
+    toast.info(question, {
+      id: "current-question",
       duration: 5000,
     });
     
@@ -307,7 +323,7 @@ const InterviewSession = () => {
       window.speechSynthesis.speak(utterance);
     }
   };
-  
+
   const toggleAudio = () => {
     setAudioEnabled(!audioEnabled);
     
@@ -315,407 +331,157 @@ const InterviewSession = () => {
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
     }
-    
-    toast({
-      title: audioEnabled ? "Audio disabled" : "Audio enabled",
-      description: audioEnabled ? "Questions will no longer be spoken aloud" : "Questions will now be spoken aloud",
-    });
   };
-  
-  const startAnswering = () => {
-    setIsAnswering(true);
-    setLiveTranscription("");
-    
-    if (interviewMode === "audio" || interviewMode === "video") {
-      setShowCountdown(true);
-      let count = 3;
-      setCountdown(count);
-      
-      const countdownInterval = setInterval(() => {
-        count -= 1;
-        setCountdown(count);
-        
-        if (count === 0) {
-          clearInterval(countdownInterval);
-          setShowCountdown(false);
-          startRecording();
-        }
-      }, 1000);
-    }
-    
-    if (interviewMode === "video") {
-      const attentionCheckInterval = setInterval(() => {
-        const shouldWarn = Math.random() > 0.7;
-        if (shouldWarn && isRecording) {
-          setAttentionWarning(true);
-          setTimeout(() => setAttentionWarning(false), 3000);
-        }
-      }, 10000);
-      
-      return () => clearInterval(attentionCheckInterval);
-    }
-  };
-  
-  const startRecording = () => {
-    setIsListening(true);
-    setIsRecording(true);
-    
-    if (speechRecognitionRef.current) {
-      try {
-        speechRecognitionRef.current.start();
-        
-        toast({
-          title: "Recording started",
-          description: "You can start speaking now",
-        });
-      } catch (error) {
-        console.error("Error starting speech recognition:", error);
-        toast({
-          variant: "destructive",
-          title: "Recording error",
-          description: "Could not start recording. Please try again.",
-        });
-      }
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Speech recognition not available",
-        description: "Your browser may not support this feature or permissions were denied.",
-      });
-    }
-  };
-  
-  const stopRecording = () => {
-    setIsListening(false);
-    setIsRecording(false);
-    
-    if (speechRecognitionRef.current) {
-      speechRecognitionRef.current.stop();
-    }
-    
-    toast({
-      title: "Processing your answer",
-      description: "Please wait...",
-    });
-    
-    setTimeout(() => {
-      const simulatedAnswer = interviewMode === "text" 
-        ? textAnswer 
-        : liveTranscription || `This is a simulated answer for the ${interviewMode} interview mode. In a real app, this would be the transcribed speech or video analysis.`;
-      
-      addAnswer(simulatedAnswer);
-      
-      if (interviewMode === "text") {
-        setTextAnswer("");
-      }
-      
-      setLiveTranscription("");
-      setIsAnswering(false);
-      
-      if (currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(currentQuestionIndex + 1);
-        
-        setTimeout(() => {
-          speakQuestion(questions[currentQuestionIndex + 1]);
-        }, 1000);
-      } else {
-        generateFeedback();
-      }
-    }, 2000);
-  };
-  
-  const generateFeedback = () => {
-    const strengths = [
-      "Clear communication style",
-      "Structured answers with relevant examples",
-      "Good understanding of technical concepts",
-    ];
-    
-    const improvements = [
-      "Could improve eye contact during responses",
-      "Sometimes spoke too quickly when discussing complex topics",
-      "Consider adding more specific metrics to demonstrate impact",
-    ];
-    
-    const overallScore = 65 + Math.floor(Math.random() * 30);
-    const passed = overallScore >= 70;
-    
-    const criteria = {
-      technicalKnowledge: 60 + Math.floor(Math.random() * 40),
-      communication: 60 + Math.floor(Math.random() * 40),
-      problemSolving: 60 + Math.floor(Math.random() * 40),
-      culturalFit: 60 + Math.floor(Math.random() * 40),
-      experience: 60 + Math.floor(Math.random() * 40),
-    };
-    
-    const detailedReview = passed 
-      ? "The candidate demonstrated good knowledge and communication skills throughout the interview. They provided structured responses with relevant examples and showed a strong understanding of the core concepts in their field. Their answers were generally clear and concise."
-      : "The candidate shows potential but needs improvement in several key areas. Their responses lacked specific examples in some cases, and technical knowledge could be stronger. With further preparation and practice, they could become a stronger candidate.";
-    
-    setFeedback({
-      strengths,
-      improvements,
-      overallScore,
-      passed,
-      criteria,
-      detailedReview,
-    });
-    
-    setTimeout(() => navigate("/interview-feedback"), 1000);
-  };
-  
-  const handleEndInterview = () => {
-    generateFeedback();
-  };
-  
-  if (!questions.length) {
-    navigate("/welcome");
-    return null;
-  }
-  
+
   return (
-    <div className="min-h-screen bg-interview-light p-4 md:p-8">
-      <div className="max-w-5xl mx-auto">
-        <header className="mb-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-800">
-              {interviewMode?.charAt(0).toUpperCase() + interviewMode?.slice(1)} Interview
-            </h1>
-            <div className="flex items-center gap-2">
-              {(interviewMode === "audio" || interviewMode === "video") && (
-                <Button 
-                  variant="outline" 
+    <div className="min-h-screen bg-gradient-to-br from-interview-light to-white p-4 md:p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold gradient-text">
+            {interviewMode === "text" ? "Text" : 
+             interviewMode === "audio" ? "Audio" : 
+             "Video"} Interview
+          </h1>
+          
+          <div className="flex items-center space-x-4">
+            {/* Audio toggle button */}
+            {(interviewMode === "audio" || interviewMode === "video") && (
+              <div className="flex items-center">
+                <Button
+                  variant="outline"
                   size="icon"
                   onClick={toggleAudio}
-                  className="text-gray-600 hover:text-gray-800"
+                  title={audioEnabled ? "Mute interviewer" : "Unmute interviewer"}
                 >
-                  {audioEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+                  {audioEnabled ? <Volume2 /> : <VolumeX />}
                 </Button>
-              )}
-              <Button 
-                variant="outline" 
-                className="border-interview-accent text-interview-accent hover:bg-interview-accent hover:text-white"
-                onClick={handleEndInterview}
-              >
-                End Interview
-              </Button>
-            </div>
+                {isSpeaking && (
+                  <span className="ml-2 text-sm text-interview-primary animate-pulse">
+                    Speaking...
+                  </span>
+                )}
+              </div>
+            )}
+            
+            <Button 
+              variant="destructive" 
+              onClick={endInterview}
+            >
+              End Interview
+            </Button>
           </div>
-          <div className="mt-2">
-            <div className="flex justify-between text-sm text-gray-600 mb-1">
-              <span>Question {currentQuestionIndex + 1} of {questions.length}</span>
-              <span>{Math.round(progressPercentage)}% Complete</span>
-            </div>
-            <Progress value={progressPercentage} className="h-2" />
-          </div>
-        </header>
+        </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {interviewMode === "video" && (
-            <div className="md:col-span-1">
-              <Card className="bg-white shadow-md h-full">
-                <CardContent className="p-4">
-                  <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden relative">
-                    {permissionsGranted ? (
-                      <>
-                        <video
-                          ref={videoRef}
-                          autoPlay
-                          playsInline
-                          muted
-                          className="w-full h-full object-cover"
-                          style={{ transform: 'scaleX(-1)' }}
-                        />
-                        {!videoRef.current?.srcObject && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-70">
-                            <p className="text-gray-700">Video feed not available</p>
-                            <Button 
-                              size="sm" 
-                              className="ml-2" 
-                              onClick={requestPermissions}
-                            >
-                              <Camera className="mr-2 h-4 w-4" />
-                              Retry
-                            </Button>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <Button onClick={requestPermissions}>
-                          <Camera className="mr-2 h-4 w-4" />
-                          Allow Camera Access
-                        </Button>
-                      </div>
-                    )}
-                    
-                    {isRecording && (
-                      <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full flex items-center">
-                        <span className="w-2 h-2 bg-white rounded-full mr-1 animate-pulse"></span>
-                        REC
-                      </div>
-                    )}
-                    
-                    {showCountdown && (
-                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center text-white text-6xl font-bold">
-                        {countdown}
-                      </div>
-                    )}
-                    
-                    {attentionWarning && (
-                      <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-3 py-2 rounded-lg flex items-center">
-                        <span className="mr-1">⚠️</span>
-                        Look at the camera
-                      </div>
-                    )}
+        <div className="bg-white rounded-xl shadow-md p-4 md:p-6 mb-6">
+          <div className="flex items-start space-x-4">
+            <Avatar className="h-12 w-12">
+              <AvatarImage src="/placeholder.svg" alt="Interviewer" />
+              <AvatarFallback>AI</AvatarFallback>
+            </Avatar>
+            
+            <div className="flex-1">
+              <p className="font-semibold text-gray-700">AI Interviewer</p>
+              <div className="mt-2 p-3 bg-gray-100 rounded-lg">
+                <p className="text-gray-800">{questions[currentQuestionIndex]}</p>
+              </div>
+              
+              {(interviewMode === "audio" || interviewMode === "video") && (
+                <button 
+                  className="mt-2 text-sm text-interview-primary flex items-center"
+                  onClick={() => speakQuestion(questions[currentQuestionIndex])}
+                >
+                  <Volume className="h-4 w-4 mr-1" />
+                  Repeat question
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {interviewMode === "video" && (
+          <div className="mb-6">
+            <div className="relative rounded-xl overflow-hidden bg-gray-900 aspect-video">
+              <video 
+                ref={videoRef}
+                autoPlay 
+                muted 
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              {!cameraActive && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <p className="text-white">Camera access required for video interview</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        <div className="bg-white rounded-xl shadow-md p-4 md:p-6">
+          <div className="flex items-start space-x-4">
+            <Avatar className="h-12 w-12">
+              <AvatarFallback>{userName.charAt(0)}</AvatarFallback>
+            </Avatar>
+            
+            <div className="flex-1">
+              <p className="font-semibold text-gray-700">{userName}</p>
+              
+              {interviewMode === "text" ? (
+                <div className="mt-2">
+                  <Textarea
+                    value={currentResponse}
+                    onChange={(e) => setCurrentResponse(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Type your response here..."
+                    className="min-h-32"
+                  />
+                </div>
+              ) : (
+                <div className="mt-2">
+                  <div className="p-3 bg-gray-100 rounded-lg min-h-32">
+                    <p className="text-gray-800">{currentResponse || "Your response will appear here as you speak..."}</p>
                   </div>
                   
-                  <div className="mt-4 text-center text-sm text-gray-500">
-                    {isRecording ? (
-                      <div className="flex items-center justify-center text-red-500">
-                        <span className="animate-pulse mr-2">●</span>
-                        Recording in progress
-                      </div>
-                    ) : (
-                      "Your video feed"
+                  <div className="mt-4 flex justify-between items-center">
+                    <Button
+                      variant={isListening ? "destructive" : "default"}
+                      className="flex items-center"
+                      onClick={toggleListening}
+                    >
+                      {isListening ? (
+                        <>
+                          <MicOff className="mr-2 h-5 w-5" />
+                          Stop Recording
+                        </>
+                      ) : (
+                        <>
+                          <Mic className="mr-2 h-5 w-5" />
+                          Start Recording
+                        </>
+                      )}
+                    </Button>
+                    
+                    {isListening && (
+                      <span className="text-interview-primary animate-pulse">
+                        Listening...
+                      </span>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              )}
+              
+              <div className="mt-4 flex justify-end">
+                <Button onClick={handleResponseSubmit} className="interview-button">
+                  <Send className="mr-2 h-4 w-4" />
+                  {currentQuestionIndex < questions.length - 1 ? "Submit & Next Question" : "Complete Interview"}
+                </Button>
+              </div>
             </div>
-          )}
-          
-          <div className={`${interviewMode === "video" ? "md:col-span-2" : "md:col-span-3"}`}>
-            <Card className="bg-white shadow-md">
-              <CardContent className="p-6">
-                <div className="mb-8">
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-xl font-semibold">Current Question:</h2>
-                    {isSpeaking && (
-                      <div className="flex items-center text-sm text-interview-primary">
-                        <span className="inline-block w-2 h-2 bg-interview-primary rounded-full mr-1 animate-pulse"></span>
-                        Speaking...
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-lg">{questions[currentQuestionIndex]}</p>
-                </div>
-                
-                <div className="space-y-4">
-                  {interviewMode === "text" ? (
-                    <>
-                      <Textarea
-                        placeholder="Type your answer here..."
-                        className="min-h-[150px]"
-                        value={textAnswer}
-                        onChange={(e) => setTextAnswer(e.target.value)}
-                        disabled={!isAnswering}
-                      />
-                      
-                      {!isAnswering ? (
-                        <Button
-                          className="interview-button w-full"
-                          onClick={startAnswering}
-                        >
-                          Start Answering
-                        </Button>
-                      ) : (
-                        <Button
-                          className="bg-interview-success text-white w-full"
-                          onClick={stopRecording}
-                          disabled={!textAnswer.trim()}
-                        >
-                          <Check className="mr-2 h-4 w-4" />
-                          Submit Answer
-                        </Button>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <div className="bg-gray-50 rounded-lg p-4 min-h-[150px] flex flex-col">
-                        {!permissionsGranted ? (
-                          <div className="flex items-center justify-center h-full">
-                            <Button onClick={requestPermissions}>
-                              <Mic className="mr-2 h-4 w-4" />
-                              Allow Microphone Access
-                            </Button>
-                          </div>
-                        ) : !isAnswering ? (
-                          <div className="text-center text-gray-500 flex-grow flex items-center justify-center">
-                            <p>Press the button below when you're ready to answer.</p>
-                          </div>
-                        ) : showCountdown ? (
-                          <div className="text-center flex-grow flex items-center justify-center">
-                            <div className="text-6xl font-bold text-interview-primary">
-                              {countdown}
-                            </div>
-                          </div>
-                        ) : isListening ? (
-                          <div className="flex flex-col h-full">
-                            <div className="text-center mb-4">
-                              <div className="w-16 h-16 bg-interview-primary rounded-full flex items-center justify-center mx-auto mb-2">
-                                <Mic className="h-8 w-8 text-white" />
-                              </div>
-                              <p className="text-interview-primary animate-pulse mb-2">Listening...</p>
-                            </div>
-                            
-                            <div className="flex-grow overflow-auto bg-white border border-gray-200 rounded-lg p-3 text-gray-800">
-                              {liveTranscription ? liveTranscription : (
-                                <p className="text-gray-400 italic">Your speech will appear here as you speak...</p>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-center text-gray-500 flex-grow flex items-center justify-center">
-                            <p>Preparing...</p>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {!isAnswering ? (
-                        <Button
-                          className="interview-button w-full"
-                          onClick={startAnswering}
-                          disabled={!permissionsGranted}
-                        >
-                          Start Answering
-                        </Button>
-                      ) : (
-                        <Button
-                          className={`w-full ${isListening ? "bg-red-500" : "bg-interview-success"} text-white`}
-                          onClick={stopRecording}
-                          disabled={!isListening}
-                        >
-                          {isListening ? (
-                            <>
-                              <MicOff className="mr-2 h-4 w-4" />
-                              Stop Recording
-                            </>
-                          ) : (
-                            <>
-                              <Check className="mr-2 h-4 w-4" />
-                              Submit Answer
-                            </>
-                          )}
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </div>
-                
-                <div className="mt-6 text-sm text-gray-500">
-                  <p>
-                    <span className="font-medium">Tip:</span>{" "}
-                    {interviewMode === "text"
-                      ? "Take your time to structure your answer before submitting."
-                      : interviewMode === "audio"
-                      ? "Speak clearly and at a moderate pace for best results."
-                      : "Maintain eye contact with the camera and minimize background distractions."}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
           </div>
+        </div>
+        
+        <div className="mt-6 text-center text-gray-600">
+          <p>Question {currentQuestionIndex + 1} of {questions.length}</p>
         </div>
       </div>
     </div>

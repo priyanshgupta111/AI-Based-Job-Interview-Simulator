@@ -1,11 +1,11 @@
 
-# AI Interview Simulator Pro - Team LetUsCook
+# AI-Based Interview Simulator - Team LetUsCook
 
 ## 🏆 CodeForge'25 Hackathon Project
 
 ## Project Overview
 
-AI Interview Simulator Pro is an advanced tool designed to help job seekers practice and improve their interview skills through AI-powered simulations. Our platform provides a realistic interview experience with real-time feedback, helping users gain confidence and perform better in actual job interviews.
+AI-Based Interview Simulator is an advanced tool designed to help job seekers practice and improve their interview skills through AI-powered simulations. Our platform provides a realistic interview experience with real-time feedback, helping users gain confidence and perform better in actual job interviews.
 
 ### Problem Statement
 
@@ -25,6 +25,9 @@ Job interviews are often stressful and challenging, especially for those with li
 - Priyansh Gupta: Backend Developer and AI Developer
 - Aakash Tutlani: AI Developer
 - Ishika Shokeen: Project Tester
+
+### Event: CodeForge'25 Hackathon  
+### URL: [https://aijobsimulator.netlify.app](https://aijobsimulator.netlify.app)
 
 ## Dependencies
 

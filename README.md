@@ -27,7 +27,6 @@ Job interviews are often stressful and challenging, especially for those with li
 - Ishika Shokeen: Project Tester
 
 ### Event: CodeForge'25 Hackathon  
-### URL: [https://aijobsimulator.netlify.app](https://aijobsimulator.netlify.app)
 
 ## Dependencies
 

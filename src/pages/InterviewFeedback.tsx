@@ -16,35 +16,45 @@ const ScoreGauge = ({ score }: { score: number }) => {
     return "bg-red-500";
   };
 
-  const circumference = 2 * Math.PI * 45;
+  // Calculate the circle's stroke properties
+  const radius = 45;
+  const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (score / 100) * circumference;
   const scoreColor = getScoreColor(score).replace('bg-', 'stroke-');
-
+  
+  // Determine the message based on score
+  const passStatus = score >= 70 ? "Pass" : "Fail";
+  
   return (
     <div className="relative h-48 w-48 mx-auto mb-4">
-      <div className="absolute inset-0 flex items-center justify-center">
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
         <div className="text-4xl font-bold">{score}</div>
+        <div className={`text-sm mt-1 ${score >= 70 ? 'text-green-500' : 'text-red-500'}`}>
+          {passStatus}
+        </div>
       </div>
-      <svg className="w-full h-full" viewBox="0 0 100 100">
+      <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+        {/* Background circle */}
         <circle
           cx="50"
           cy="50"
-          r="45"
+          r={radius}
           fill="none"
           stroke="#e6e6e6"
-          strokeWidth="10"
+          strokeWidth="8"
         />
+        {/* Score circle with animation */}
         <circle
           cx="50"
           cy="50"
-          r="45"
+          r={radius}
           fill="none"
           stroke={scoreColor}
-          strokeWidth="10"
+          strokeWidth="8"
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
-          transform="rotate(-90 50 50)"
           strokeLinecap="round"
+          className="transition-all duration-1000 ease-in-out"
         />
       </svg>
     </div>

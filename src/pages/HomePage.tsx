@@ -26,7 +26,7 @@ const HomePage = () => {
       <div className="max-w-4xl w-full space-y-8 text-center">
         <div className="space-y-4 staggered-fade-in">
           <h1 className="text-4xl md:text-6xl font-bold gradient-text">
-            AI Interview Simulator Pro
+            Job Interview Simulator AI
           </h1>
           <p className="text-lg md:text-xl text-gray-700 max-w-2xl mx-auto">
             Practice job interviews with our advanced AI. Get real-time feedback on your answers, 

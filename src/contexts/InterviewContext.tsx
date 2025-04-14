@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
 export type InterviewMode = "text" | "audio" | "video";
@@ -248,20 +249,45 @@ export const InterviewProvider = ({ children }: InterviewProviderProps) => {
   const generateFeedback = () => {
     if (answers.length === 0) return;
     
+    // More strict evaluation of response quality
     const avgResponseLength = answers.reduce((sum, ans) => sum + ans.length, 0) / answers.length;
-    const responseQuality = Math.min(Math.floor((avgResponseLength / 200) * 100), 100);
     
-    const baseScore = Math.floor(Math.random() * 30) + 65;
+    // Stricter scoring for response length: penalize very short answers more significantly
+    let responseQualityScore = 0;
+    if (avgResponseLength < 50) {
+      responseQualityScore = Math.floor((avgResponseLength / 50) * 40); // Max 40 points for very short answers
+    } else if (avgResponseLength < 150) {
+      responseQualityScore = 40 + Math.floor(((avgResponseLength - 50) / 100) * 30); // 40-70 points for short answers
+    } else if (avgResponseLength < 300) {
+      responseQualityScore = 70 + Math.floor(((avgResponseLength - 150) / 150) * 20); // 70-90 points for medium answers
+    } else {
+      responseQualityScore = 90 + Math.floor(Math.min((avgResponseLength - 300) / 200, 1) * 10); // 90-100 points for comprehensive answers
+    }
     
-    const genRandomScore = (base: number) => {
-      return Math.min(Math.max(base + Math.floor(Math.random() * 30) - 15, 50), 100);
-    };
+    // Evaluation of answer quality based on keyword presence and structured responses
+    // This is a simplified evaluation that would be more sophisticated in a real system
+    const keywordsScore = Math.floor(Math.random() * 15) + 65; // For demo, we're using random, but in real system this would be based on content analysis
     
-    const clarity = genRandomScore(baseScore);
-    const confidence = genRandomScore(baseScore);
-    const engagement = genRandomScore(baseScore);
-    const eyeContact = interviewMode === "video" ? genRandomScore(baseScore) : 0;
-    const attentiveness = interviewMode === "video" ? genRandomScore(baseScore) : 0;
+    // Check for structured answers (e.g., containing examples, evidence, reflection)
+    const hasStructure = answers.reduce((count, ans) => {
+      // Count responses that likely have a structured approach (contains examples, reflection, etc.)
+      const hasExample = /example|instance|case|situation|scenario/i.test(ans);
+      const hasReflection = /learned|realized|understood|discovered|insight|reflect/i.test(ans);
+      const hasEvidence = /data|statistics|research|study|evidence|proven|measured/i.test(ans);
+      
+      return count + (hasExample || hasReflection || hasEvidence ? 1 : 0);
+    }, 0);
+    
+    const structureScore = Math.floor((hasStructure / answers.length) * 100);
+    
+    // More accurate behavioral analysis
+    const clarity = Math.floor((responseQualityScore * 0.6) + (keywordsScore * 0.4));
+    const confidence = structureScore;
+    const engagement = Math.floor((responseQualityScore * 0.5) + (structureScore * 0.5));
+    
+    // Video-specific metrics
+    const eyeContact = interviewMode === "video" ? Math.floor(65 + Math.random() * 35) : 0;
+    const attentiveness = interviewMode === "video" ? Math.floor(65 + Math.random() * 35) : 0;
     
     setBehaviorAnalysis({
       clarity,
@@ -271,70 +297,119 @@ export const InterviewProvider = ({ children }: InterviewProviderProps) => {
       attentiveness
     });
     
-    const technicalKnowledge = genRandomScore(baseScore);
-    const communication = genRandomScore(baseScore);
-    const problemSolving = genRandomScore(baseScore);
-    const culturalFit = genRandomScore(baseScore);
-    const experience = genRandomScore(baseScore);
+    // Technical evaluation
+    // Use a stricter baseline
+    const baselineScore = 60; // Starting point for evaluation
     
+    // Calculate individual criteria scores with more variability and strictness
+    const calculateCriteriaScore = (answerQuality: number, threshold: number) => {
+      // More nuanced scoring that's harder to achieve high scores
+      if (answerQuality > 90) return Math.floor(baselineScore + 35 + (Math.random() * 5)); // 95-100
+      if (answerQuality > 80) return Math.floor(baselineScore + 25 + (Math.random() * 10)); // 85-95
+      if (answerQuality > 70) return Math.floor(baselineScore + 15 + (Math.random() * 10)); // 75-85
+      if (answerQuality > 60) return Math.floor(baselineScore + 5 + (Math.random() * 10)); // 65-75
+      if (answerQuality > 50) return Math.floor(baselineScore - 5 + (Math.random() * 10)); // 55-65
+      return Math.floor(baselineScore - 15 + (Math.random() * 10)); // 45-55
+    };
+    
+    // Calculate scores for each criterion using the new algorithm
+    const technicalKnowledge = calculateCriteriaScore(responseQualityScore, 75);
+    const communication = calculateCriteriaScore(clarity, 80);
+    const problemSolving = calculateCriteriaScore(structureScore, 70);
+    const culturalFit = calculateCriteriaScore(engagement, 70);
+    const experience = calculateCriteriaScore(keywordsScore, 75);
+    
+    // Weighted overall score calculation
     const overallScore = Math.floor(
-      (technicalKnowledge + communication + problemSolving + culturalFit + experience) / 5
+      (technicalKnowledge * 0.25) +
+      (communication * 0.2) +
+      (problemSolving * 0.25) +
+      (culturalFit * 0.15) +
+      (experience * 0.15)
     );
     
+    // Strict pass/fail threshold - 70 is the passing score
     const passed = overallScore >= 70;
     
+    // Generate meaningful strengths and areas for improvement
     const strengths = [];
     const improvements = [];
     
-    if (technicalKnowledge >= 75) {
-      strengths.push("Demonstrates solid technical knowledge in the field");
+    // More detailed and specific feedback
+    if (technicalKnowledge >= 80) {
+      strengths.push("Demonstrated exceptional technical knowledge with specific examples");
+    } else if (technicalKnowledge >= 70) {
+      strengths.push("Showed good technical understanding of core concepts");
     } else {
-      improvements.push("Could benefit from strengthening technical knowledge");
+      improvements.push("Need to develop deeper technical knowledge with concrete examples");
     }
     
-    if (communication >= 75) {
-      strengths.push("Communicates ideas clearly and effectively");
+    if (communication >= 80) {
+      strengths.push("Communicated ideas with clarity, precision and confidence");
+    } else if (communication >= 70) {
+      strengths.push("Expressed thoughts clearly and logically");
     } else {
-      improvements.push("Consider working on more concise and clear communication");
+      improvements.push("Should work on more structured and concise communication");
     }
     
-    if (problemSolving >= 75) {
-      strengths.push("Shows good problem-solving approach");
+    if (problemSolving >= 80) {
+      strengths.push("Excellent analytical approach to complex problems with methodical solutions");
+    } else if (problemSolving >= 70) {
+      strengths.push("Demonstrated sound problem-solving methodology");
     } else {
-      improvements.push("Could improve analytical and problem-solving skills");
+      improvements.push("Could improve problem-solving approach with more structured frameworks");
     }
     
-    if (culturalFit >= 75) {
-      strengths.push("Demonstrates values aligned with organization culture");
+    if (culturalFit >= 80) {
+      strengths.push("Values and work approach align exceptionally well with organizational culture");
+    } else if (culturalFit >= 70) {
+      strengths.push("Showed good understanding of and alignment with company values");
     } else {
-      improvements.push("Consider researching more about company culture");
+      improvements.push("Research company culture further to demonstrate better alignment");
     }
     
-    if (experience >= 75) {
-      strengths.push("Effectively leverages past experiences in responses");
+    if (experience >= 80) {
+      strengths.push("Effectively leveraged relevant experience with measurable achievements");
+    } else if (experience >= 70) {
+      strengths.push("Appropriately referenced past experiences to support answers");
     } else {
-      improvements.push("Try to connect answers more closely to relevant experience");
+      improvements.push("Should connect answers more directly to relevant past experiences");
     }
     
-    if (responseQuality >= 75) {
-      strengths.push("Provides detailed and comprehensive responses");
+    if (responseQualityScore >= 80) {
+      strengths.push("Provided comprehensive, detailed responses with supporting evidence");
+    } else if (responseQualityScore >= 70) {
+      strengths.push("Answers were adequately detailed and relevant");
     } else {
-      improvements.push("Responses could benefit from more specific examples and details");
+      improvements.push("Responses would benefit from more depth, specificity and examples");
     }
     
+    // Ensure we always have some feedback
     if (strengths.length === 0) {
-      strengths.push("Shows potential and willingness to learn");
+      strengths.push("Shows willingness to learn and adaptability");
     }
     if (improvements.length === 0) {
-      improvements.push("Could benefit from more interview practice for confidence");
+      improvements.push("Continue building confidence through interview practice");
     }
     
+    // Limit to top three most relevant points
     const finalStrengths = strengths.slice(0, 3);
     const finalImprovements = improvements.slice(0, 3);
     
-    const detailedReview = passed 
-      ? "The candidate demonstrated strong communication skills and provided relevant answers. They showed good knowledge of the field and handled questions confidently."
-      : "The candidate has potential but needs to work on structuring answers more clearly. More specific examples would strengthen responses.";
+    // Generate a more detailed performance review based on scores
+    let detailedReview = "";
+    
+    if (overallScore >= 85) {
+      detailedReview = "The candidate demonstrated exceptional mastery of technical concepts and communication skills. Responses were comprehensive, well-structured, and showed deep understanding of the field. The candidate would likely excel in this role and bring significant value to the organization.";
+    } else if (overallScore >= 75) {
+      detailedReview = "The candidate showed strong competency in most areas with clear communication and good technical knowledge. Responses were thoughtful and demonstrated relevant experience. With minor improvements, the candidate would be a strong asset to the team.";
+    } else if (overallScore >= 70) {
+      detailedReview = "The candidate met the basic requirements with adequate technical knowledge and communication skills. While some answers lacked depth or specificity, the overall performance demonstrated capability for the role with proper guidance and development.";
+    } else if (overallScore >= 60) {
+      detailedReview = "The candidate showed potential but fell short in key areas. Responses lacked sufficient depth, specificity, or relevant examples. With additional preparation and development, the candidate might be suitable for a more junior position or future opportunities.";
+    } else {
+      detailedReview = "The candidate needs significant improvement in technical knowledge and communication skills. Responses were often vague, lacked structure, or missed key points. Additional training and experience would be necessary before reconsidering for a similar role.";
+    }
     
     setFeedback({
       strengths: finalStrengths,

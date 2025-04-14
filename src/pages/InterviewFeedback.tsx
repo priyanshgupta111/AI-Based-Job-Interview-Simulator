@@ -1,12 +1,12 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useInterview } from "@/contexts/InterviewContext";
-import { Check, X, ArrowUp, ArrowDown } from "lucide-react";
+import { Check, ArrowUp } from "lucide-react";
 
 const ScoreGauge = ({ score }: { score: number }) => {
   const getScoreColor = (score: number) => {
@@ -72,9 +72,17 @@ const InterviewFeedback = () => {
     answers, 
     behaviorAnalysis, 
     feedback, 
-    resetInterview 
+    resetInterview,
+    generateFeedback
   } = useInterview();
   const navigate = useNavigate();
+
+  // If feedback isn't generated yet, generate it
+  React.useEffect(() => {
+    if (feedback.overallScore === 0 && answers.length > 0) {
+      generateFeedback();
+    }
+  }, [feedback.overallScore, answers.length, generateFeedback]);
 
   const handleStartNew = () => {
     resetInterview();
@@ -250,9 +258,7 @@ const InterviewFeedback = () => {
                 <div className="mt-8 bg-gray-50 p-4 rounded-lg">
                   <h3 className="text-lg font-medium mb-2">AI Interviewer Notes</h3>
                   <p className="text-gray-700">
-                    {feedback.passed
-                      ? "The candidate demonstrated strong communication skills and provided relevant answers. They showed good knowledge of the field and handled questions confidently."
-                      : "The candidate has potential but needs to work on structuring answers more clearly. More specific examples would strengthen responses, and improved eye contact would enhance presence."}
+                    {feedback.detailedReview}
                   </p>
                 </div>
               </CardContent>

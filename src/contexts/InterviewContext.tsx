@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
 export type InterviewMode = "text" | "audio" | "video";
@@ -16,6 +15,7 @@ interface InterviewContextType {
   setCurrentQuestionIndex: (index: number) => void;
   answers: string[];
   addAnswer: (answer: string) => void;
+  setAnswers: (answers: string[]) => void;
   behaviorAnalysis: {
     eyeContact: number;
     confidence: number;
@@ -39,6 +39,7 @@ interface InterviewContextType {
     detailedReview: string;
   };
   setFeedback: (feedback: InterviewContextType['feedback']) => void;
+  generateFeedback: () => void;
   resetInterview: () => void;
   addCustomJobField: (id: string, label: string) => void;
   customJobFields: Array<{ id: string; label: string; icon: string }>;
@@ -119,6 +120,7 @@ const defaultContext: InterviewContextType = {
   setCurrentQuestionIndex: () => {},
   answers: [],
   addAnswer: () => {},
+  setAnswers: () => {},
   behaviorAnalysis: {
     eyeContact: 0,
     confidence: 0,
@@ -142,6 +144,7 @@ const defaultContext: InterviewContextType = {
     detailedReview: "",
   },
   setFeedback: () => {},
+  generateFeedback: () => {},
   resetInterview: () => {},
   addCustomJobField: () => {},
   customJobFields: [],
@@ -188,14 +191,11 @@ export const InterviewProvider = ({ children }: InterviewProviderProps) => {
   const handleSetJobField = (field: JobField) => {
     setJobField(field);
     
-    // Check if it's a predefined field
     if (defaultQuestions[field as keyof typeof defaultQuestions]) {
       setQuestions(defaultQuestions[field as keyof typeof defaultQuestions]);
     } else {
-      // Check if it's a custom field
       const customField = customJobFields.find(f => f.id === field);
       if (customField) {
-        // Generate generic questions for custom fields
         setQuestions([
           `Tell me about your experience in ${customField.label}?`,
           `What are the most important skills for success in ${customField.label}?`,
@@ -207,7 +207,6 @@ export const InterviewProvider = ({ children }: InterviewProviderProps) => {
           `Where do you see the ${customField.label} field evolving in the next 5 years?`,
         ]);
       } else {
-        // Fallback to generic questions
         setQuestions([
           "Tell me about your relevant experience?",
           "What are your greatest professional strengths?",
@@ -240,10 +239,117 @@ export const InterviewProvider = ({ children }: InterviewProviderProps) => {
     const newField = {
       id,
       label,
-      icon: "🔍", // Default icon for custom fields
+      icon: "🔍",
     };
     
     setCustomJobFields((prev) => [...prev, newField]);
+  };
+
+  const generateFeedback = () => {
+    if (answers.length === 0) return;
+    
+    const avgResponseLength = answers.reduce((sum, ans) => sum + ans.length, 0) / answers.length;
+    const responseQuality = Math.min(Math.floor((avgResponseLength / 200) * 100), 100);
+    
+    const baseScore = Math.floor(Math.random() * 30) + 65;
+    
+    const genRandomScore = (base: number) => {
+      return Math.min(Math.max(base + Math.floor(Math.random() * 30) - 15, 50), 100);
+    };
+    
+    const clarity = genRandomScore(baseScore);
+    const confidence = genRandomScore(baseScore);
+    const engagement = genRandomScore(baseScore);
+    const eyeContact = interviewMode === "video" ? genRandomScore(baseScore) : 0;
+    const attentiveness = interviewMode === "video" ? genRandomScore(baseScore) : 0;
+    
+    setBehaviorAnalysis({
+      clarity,
+      confidence,
+      engagement,
+      eyeContact,
+      attentiveness
+    });
+    
+    const technicalKnowledge = genRandomScore(baseScore);
+    const communication = genRandomScore(baseScore);
+    const problemSolving = genRandomScore(baseScore);
+    const culturalFit = genRandomScore(baseScore);
+    const experience = genRandomScore(baseScore);
+    
+    const overallScore = Math.floor(
+      (technicalKnowledge + communication + problemSolving + culturalFit + experience) / 5
+    );
+    
+    const passed = overallScore >= 70;
+    
+    const strengths = [];
+    const improvements = [];
+    
+    if (technicalKnowledge >= 75) {
+      strengths.push("Demonstrates solid technical knowledge in the field");
+    } else {
+      improvements.push("Could benefit from strengthening technical knowledge");
+    }
+    
+    if (communication >= 75) {
+      strengths.push("Communicates ideas clearly and effectively");
+    } else {
+      improvements.push("Consider working on more concise and clear communication");
+    }
+    
+    if (problemSolving >= 75) {
+      strengths.push("Shows good problem-solving approach");
+    } else {
+      improvements.push("Could improve analytical and problem-solving skills");
+    }
+    
+    if (culturalFit >= 75) {
+      strengths.push("Demonstrates values aligned with organization culture");
+    } else {
+      improvements.push("Consider researching more about company culture");
+    }
+    
+    if (experience >= 75) {
+      strengths.push("Effectively leverages past experiences in responses");
+    } else {
+      improvements.push("Try to connect answers more closely to relevant experience");
+    }
+    
+    if (responseQuality >= 75) {
+      strengths.push("Provides detailed and comprehensive responses");
+    } else {
+      improvements.push("Responses could benefit from more specific examples and details");
+    }
+    
+    if (strengths.length === 0) {
+      strengths.push("Shows potential and willingness to learn");
+    }
+    if (improvements.length === 0) {
+      improvements.push("Could benefit from more interview practice for confidence");
+    }
+    
+    const finalStrengths = strengths.slice(0, 3);
+    const finalImprovements = improvements.slice(0, 3);
+    
+    const detailedReview = passed 
+      ? "The candidate demonstrated strong communication skills and provided relevant answers. They showed good knowledge of the field and handled questions confidently."
+      : "The candidate has potential but needs to work on structuring answers more clearly. More specific examples would strengthen responses.";
+    
+    setFeedback({
+      strengths: finalStrengths,
+      improvements: finalImprovements,
+      overallScore,
+      passed,
+      criteria: {
+        technicalKnowledge,
+        communication,
+        problemSolving,
+        culturalFit,
+        experience,
+      },
+      detailedReview,
+    });
   };
 
   const resetInterview = () => {
@@ -289,10 +395,12 @@ export const InterviewProvider = ({ children }: InterviewProviderProps) => {
         setCurrentQuestionIndex,
         answers,
         addAnswer,
+        setAnswers,
         behaviorAnalysis,
         updateBehaviorAnalysis,
         feedback,
         setFeedback,
+        generateFeedback,
         resetInterview,
         addCustomJobField,
         customJobFields,

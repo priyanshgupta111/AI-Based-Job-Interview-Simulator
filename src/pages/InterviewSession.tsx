@@ -4,46 +4,8 @@ import { Button } from "@/components/ui/button";
 import { useInterview } from "@/contexts/InterviewContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Mic, MicOff, Video, VideoOff, Send, Volume, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
-
-// Mock interview questions based on job field
-const getInterviewQuestions = (jobField: string) => {
-  const questions: Record<string, string[]> = {
-    "software-engineering": [
-      "Tell me about your experience with React and TypeScript.",
-      "How do you approach debugging a complex issue in your code?",
-      "Describe a challenging project you worked on and how you overcame obstacles.",
-      "How do you stay updated with the latest technologies and programming practices?",
-      "Explain how you would design a scalable web application architecture.",
-    ],
-    "data-science": [
-      "Explain the difference between supervised and unsupervised learning.",
-      "How do you handle missing data in a dataset?",
-      "Describe a data science project you've worked on and the impact it had.",
-      "What evaluation metrics do you use for classification problems?",
-      "How would you explain a complex machine learning model to non-technical stakeholders?",
-    ],
-    "marketing": [
-      "Describe a successful marketing campaign you've developed.",
-      "How do you measure the success of your marketing efforts?",
-      "What strategies do you use to identify and reach your target audience?",
-      "How do you stay current with digital marketing trends?",
-      "Describe how you would approach marketing a new product launch.",
-    ],
-    // Default questions for any other job field
-    "default": [
-      "Tell me about yourself and your background.",
-      "What are your greatest professional strengths?",
-      "What do you consider to be your weaknesses?",
-      "Why are you interested in this position?",
-      "Where do you see yourself in five years?",
-    ],
-  };
-
-  return questions[jobField] || questions["default"];
-};
 
 // Define TypeScript interfaces for speech recognition
 interface SpeechRecognitionEvent extends Event {
@@ -122,15 +84,23 @@ declare global {
 }
 
 const InterviewSession = () => {
-  const { userName, jobField, interviewMode } = useInterview();
+  const { 
+    userName, 
+    jobField, 
+    interviewMode, 
+    questions, 
+    currentQuestionIndex, 
+    setCurrentQuestionIndex,
+    addAnswer,
+    setAnswers,
+    generateFeedback
+  } = useInterview();
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   
-  const [questions] = useState<string[]>(() => getInterviewQuestions(jobField));
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [responses, setResponses] = useState<string[]>([]);
   const [currentResponse, setCurrentResponse] = useState("");
+  const [responses, setResponses] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [interviewComplete, setInterviewComplete] = useState(false);
@@ -177,7 +147,7 @@ const InterviewSession = () => {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [interviewMode, questions, currentQuestionIndex]);
+  }, [interviewMode, questions, currentQuestionIndex, setAnswers]);
 
   // Initialize speech recognition for audio and video modes
   useEffect(() => {
@@ -244,10 +214,13 @@ const InterviewSession = () => {
       return;
     }
     
-    // Save the current response
+    // Save the current response both locally and in the context
     const updatedResponses = [...responses];
     updatedResponses[currentQuestionIndex] = currentResponse.trim();
     setResponses(updatedResponses);
+    
+    // Add answer to the global context
+    addAnswer(currentResponse.trim());
     
     // Stop listening if active
     if (isListening && recognitionRef.current) {
@@ -257,7 +230,7 @@ const InterviewSession = () => {
     
     // Move to the next question or end interview
     if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(prevIndex => prevIndex + 1);
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
       setCurrentResponse("");
       
       // Speak the next question after a short delay
@@ -266,7 +239,10 @@ const InterviewSession = () => {
       }, 500);
     } else {
       setInterviewComplete(true);
+      
+      // Generate feedback based on all answers
       setTimeout(() => {
+        generateFeedback();
         navigate("/interview-feedback");
       }, 1000);
     }
@@ -280,6 +256,8 @@ const InterviewSession = () => {
   };
 
   const endInterview = () => {
+    // Generate feedback before navigating
+    generateFeedback();
     navigate("/interview-feedback");
   };
 

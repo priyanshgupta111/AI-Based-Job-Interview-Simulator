@@ -30,44 +30,12 @@ interface SpeechRecognitionAlternative {
   readonly confidence: number;
 }
 
-interface SpeechSynthesisUtteranceEvent extends Event {
-  utterance: SpeechSynthesisUtterance;
-  charIndex?: number;
-  charLength?: number;
-  elapsedTime?: number;
-  name?: string;
-}
-
 // Augment the window interface for TypeScript
 declare global {
   interface Window {
     SpeechRecognition: new () => SpeechRecognition;
     webkitSpeechRecognition: new () => SpeechRecognition;
     SpeechSynthesisUtterance: new (text: string) => SpeechSynthesisUtterance;
-  }
-
-  interface SpeechSynthesisUtterance extends EventTarget {
-    text: string;
-    lang: string;
-    voice: SpeechSynthesisVoice | null;
-    volume: number;
-    rate: number;
-    pitch: number;
-    onboundary: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
-    onend: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
-    onerror: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
-    onmark: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
-    onpause: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
-    onresume: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
-    onstart: ((this: SpeechSynthesisUtterance, ev: SpeechSynthesisUtteranceEvent) => any) | null;
-  }
-
-  interface SpeechSynthesisVoice {
-    voiceURI: string;
-    name: string;
-    lang: string;
-    localService: boolean;
-    default: boolean;
   }
 
   interface SpeechRecognition extends EventTarget {

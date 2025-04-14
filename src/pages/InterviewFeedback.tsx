@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useInterview } from "@/contexts/InterviewContext";
-import { Check, ArrowUp } from "lucide-react";
+import { Check, ArrowUp, CircleGauge } from "lucide-react";
 
 const ScoreGauge = ({ score }: { score: number }) => {
   const getScoreColor = (score: number) => {
@@ -15,6 +15,10 @@ const ScoreGauge = ({ score }: { score: number }) => {
     if (score >= 60) return "bg-yellow-500";
     return "bg-red-500";
   };
+
+  const circumference = 2 * Math.PI * 45;
+  const strokeDashoffset = circumference - (score / 100) * circumference;
+  const scoreColor = getScoreColor(score).replace('bg-', 'stroke-');
 
   return (
     <div className="relative h-48 w-48 mx-auto mb-4">
@@ -35,10 +39,12 @@ const ScoreGauge = ({ score }: { score: number }) => {
           cy="50"
           r="45"
           fill="none"
-          stroke={getScoreColor(score)}
+          stroke={scoreColor}
           strokeWidth="10"
-          strokeDasharray={`${(score / 100) * 283} 283`}
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
           transform="rotate(-90 50 50)"
+          strokeLinecap="round"
         />
       </svg>
     </div>
